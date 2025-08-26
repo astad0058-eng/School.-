@@ -1,0 +1,868 @@
+﻿<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سیستم مدیریت اطلاعات مدارس</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.rtl.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #4e73df;
+            --secondary-color: #858796;
+            --success-color: #1cc88a;
+            --warning-color: #f6c23e;
+            --danger-color: #e74a3b;
+            --light-bg: #f8f9fc;
+            --text-gray-300: #dddfeb;
+            --text-gray-800: #5a5c69;
+        }
+        body {
+            background-color: var(--light-bg);
+            color: var(--text-gray-800);
+        }
+        .header {
+            background: linear-gradient(to right, var(--primary-color), #2e59d9);
+            color: white;
+            padding: 2rem 0;
+            border-bottom-left-radius: 20px;
+            border-bottom-right-radius: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .btn-admin, .logout-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            /* === تغییرات رنگ دکمه === */
+            background-color: white;
+            color: var(--primary-color);
+            border: none;
+            font-weight: bold;
+        }
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .login-card {
+            width: 100%;
+            max-width: 400px;
+            padding: 2rem;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+        }
+        .card {
+            border: none;
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+        }
+        .card .card-body {
+            padding: 1.25rem;
+        }
+        .border-left-primary { border-left: 0.25rem solid var(--primary-color) !important; }
+        .border-left-success { border-left: 0.25rem solid var(--success-color) !important; }
+        .text-xs { font-size: 0.8rem; }
+        .text-gray-300 { color: var(--text-gray-300) !important; }
+
+        .form-container {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+            margin-top: 2rem;
+        }
+
+        /* === استایل‌های مخصوص موبایل === */
+        @media (max-width: 768px) {
+            .header {
+                padding: 1.5rem 1rem;
+            }
+            .header h1 {
+                font-size: 1.75rem; /* کاهش اندازه عنوان */
+            }
+            .header .lead {
+                font-size: 1rem;
+            }
+            .btn-admin, .logout-btn {
+                top: 10px;
+                left: 10px;
+                padding: 0.3rem 0.6rem; /* کوچک کردن دکمه */
+                font-size: 0.8rem;
+            }
+            .login-card, .form-container, .card .card-body {
+                padding: 1.5rem; /* کاهش فاصله داخلی در موبایل */
+            }
+            .form-container h4 {
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div id="viewerPage">
+    <div class="header text-center mb-4">
+        <div class="container">
+            <button class="btn btn-admin" onclick="showLoginForm()">
+                <i class="fas fa-user-lock me-1"></i> ورود مدیران
+            </button>
+            <h1><i class="fas fa-school me-2"></i>سیستم مدیریت اطلاعات مدارس</h1>
+            <p class="lead">مشاهده اطلاعات مدارس</p>
+        </div>
+    </div>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <div class="card border-left-primary shadow h-100 py-2">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col">
+                                <div class="text-xs fw-bold text-primary text-uppercase mb-1">تعداد کل مدارس</div>
+                                <div id="viewerTotalSchools" class="h5 mb-0 fw-bold text-gray-800">0</div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="fas fa-school fa-2x text-gray-300"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-4">
+                <div class="card border-left-success shadow h-100 py-2">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col">
+                                <div class="text-xs fw-bold text-success text-uppercase mb-1">تعداد کل دانش آموزان</div>
+                                <div id="viewerTotalStudents" class="h5 mb-0 fw-bold text-gray-800">0</div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="fas fa-users fa-2x text-gray-300"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="schoolsList" class="card shadow">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">لیست مدارس</h6>
+                <button class="btn btn-sm btn-success" onclick="exportAllSchoolsToExcel()">
+                    <i class="fas fa-file-excel me-1"></i> خروجی اکسل
+                </button>
+            </div>
+            <div class="card-body">
+                <input type="text" id="viewerSearchInput" class="form-control mb-3" placeholder="جستجو در مدارس...">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>نام مدرسه</th>
+                                <th>نام مدیر</th>
+                                <th>تلفن مدرسه</th>
+                                <th>کد فضا</th>
+                                <th>تعداد کلاس</th>
+                                <th>تعداد دانش آموز</th>
+                                <th>عملیات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="schoolsListView">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="schoolDetails" style="display: none;" class="card shadow">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center" id="schoolDetailsHeader">
+            </div>
+            <div class="card-body">
+                <div id="schoolDetailsContent" class="row g-3"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="adminLoginPage" class="login-container" style="display: none;">
+    <div class="login-card">
+        <div class="text-center mb-4">
+            <h3><i class="fas fa-user-lock"></i> ورود مدیران</h3>
+            <p class="mb-0">لطفا اطلاعات حساب کاربری را وارد کنید</p>
+        </div>
+        <div>
+            <div class="mb-3">
+                <label for="username" class="form-label">نام کاربری</label>
+                <input type="text" class="form-control" id="username" placeholder="نام کاربری" autocomplete="off">
+            </div>
+            <div class="mb-3">
+                <label for="password" class="form-label">رمز عبور</label>
+                <input type="password" class="form-control" id="password" placeholder="رمز عبور" autocomplete="off">
+            </div>
+            <div class="d-grid gap-2">
+                <button class="btn btn-primary" onclick="login()">ورود به سیستم</button>
+                <button class="btn btn-secondary" onclick="backToViewer()">بازگشت</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="adminPage" style="display: none;">
+    <div class="header text-center mb-4">
+        <div class="container">
+            <button class="btn logout-btn" onclick="logout()">
+                <i class="fas fa-sign-out-alt"></i> خروج
+            </button>
+            <h1><i class="fas fa-cogs me-2"></i>پنل مدیریت مدارس</h1>
+            <p class="lead">مدیریت و ویرایش اطلاعات مدارس</p>
+        </div>
+    </div>
+    
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <div class="card border-left-primary shadow h-100 py-2">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col">
+                                <div class="text-xs fw-bold text-primary text-uppercase mb-1">تعداد کل مدارس</div>
+                                <div id="adminTotalSchools" class="h5 mb-0 fw-bold text-gray-800">0</div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="fas fa-school fa-2x text-gray-300"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-4">
+                <div class="card border-left-success shadow h-100 py-2">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col">
+                                <div class="text-xs fw-bold text-success text-uppercase mb-1">تعداد کل دانش آموزان</div>
+                                <div id="adminTotalStudents" class="h5 mb-0 fw-bold text-gray-800">0</div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="fas fa-users fa-2x text-gray-300"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="addSchoolForm" class="form-container" style="display: none;">
+            <h4>افزودن مدرسه جدید</h4>
+            <hr>
+            <form id="newSchoolForm" class="row g-3">
+                <div class="col-md-4">
+                    <label for="schoolName" class="form-label">نام مدرسه <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="schoolName" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="spaceCode" class="form-label">کد فضا <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="spaceCode" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="principalName" class="form-label">نام مدیر <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="principalName" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="schoolPhone" class="form-label">تلفن مدرسه <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="schoolPhone" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="classCount" class="form-label">تعداد کلاس <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control" id="classCount" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="studentCount" class="form-label">تعداد دانش آموز <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control" id="studentCount" required>
+                </div>
+                <div class="col-md-4"><label for="schoolId" class="form-label">شناسه مدرسه</label><input type="text" class="form-control" id="schoolId"></div>
+                <div class="col-md-4"><label for="principalPhone" class="form-label">شماره تماس مدیر</label><input type="text" class="form-control" id="principalPhone"></div>
+                <div class="col-md-4"><label for="assistantName" class="form-label">نام معاون</label><input type="text" class="form-control" id="assistantName"></div>
+                <div class="col-md-4"><label for="assistantPhone" class="form-label">شماره تماس معاون</label><input type="text" class="form-control" id="assistantPhone"></div>
+                <div class="col-md-4"><label for="servantName" class="form-label">نام خدمتگزار</label><input type="text" class="form-control" id="servantName"></div>
+                <div class="col-md-4"><label for="servantPhone" class="form-label">شماره تماس خدمتگزار</label><input type="text" class="form-control" id="servantPhone"></div>
+                <div class="col-md-4"><label for="accountNumber" class="form-label">شماره حساب مدرسه</label><input type="text" class="form-control" id="accountNumber"></div>
+                <div class="col-md-4"><label for="area" class="form-label">متراژ (متر مربع)</label><input type="number" class="form-control" id="area"></div>
+                <div class="col-md-4"><label for="computerCount" class="form-label">تعداد کامپیوتر</label><input type="number" class="form-control" id="computerCount"></div>
+                <div class="col-md-4"><label for="datashowCount" class="form-label">تعداد دیتاشو</label><input type="number" class="form-control" id="datashowCount"></div>
+                <div class="col-md-4"><label for="copierCount" class="form-label">تعداد دستگاه کپی</label><input type="number" class="form-control" id="copierCount"></div>
+                <div class="col-md-4"><label for="printerCount" class="form-label">تعداد پرینتر</label><input type="number" class="form-control" id="printerCount"></div>
+                <div class="col-md-4"><label for="smartboardCount" class="form-label">تعداد برد هوشمند</label><input type="number" class="form-control" id="smartboardCount"></div>
+                <div class="col-12"><label for="schoolAddress" class="form-label">آدرس مدرسه</label><textarea class="form-control" id="schoolAddress" rows="2"></textarea></div>
+                <div class="col-12"><label for="schoolDescription" class="form-label">توضیحات</label><textarea class="form-control" id="schoolDescription" rows="2"></textarea></div>
+                <div class="col-12 d-flex justify-content-end gap-2">
+                    <button type="submit" class="btn btn-success">ذخیره</button>
+                    <button type="button" class="btn btn-secondary" onclick="cancelAddSchool()">انصراف</button>
+                </div>
+            </form>
+        </div>
+
+        <div id="editSchoolForm" class="form-container" style="display: none;">
+            <h4>ویرایش اطلاعات مدرسه</h4>
+            <hr>
+            <form id="editSchoolDataForm" class="row g-3">
+                <input type="hidden" id="editSchoolId">
+                <div class="col-md-4">
+                    <label for="editSchoolName" class="form-label">نام مدرسه <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="editSchoolName" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="editSpaceCode" class="form-label">کد فضا <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="editSpaceCode" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="editPrincipalName" class="form-label">نام مدیر <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="editPrincipalName" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="editSchoolPhone" class="form-label">تلفن مدرسه <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="editSchoolPhone" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="editClassCount" class="form-label">تعداد کلاس <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control" id="editClassCount" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="editStudentCount" class="form-label">تعداد دانش آموز <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control" id="editStudentCount" required>
+                </div>
+                <div class="col-md-4"><label for="editSchoolIdField" class="form-label">شناسه مدرسه</label><input type="text" class="form-control" id="editSchoolIdField"></div>
+                <div class="col-md-4"><label for="editPrincipalPhone" class="form-label">شماره تماس مدیر</label><input type="text" class="form-control" id="editPrincipalPhone"></div>
+                <div class="col-md-4"><label for="editAssistantName" class="form-label">نام معاون</label><input type="text" class="form-control" id="editAssistantName"></div>
+                <div class="col-md-4"><label for="editAssistantPhone" class="form-label">شماره تماس معاون</label><input type="text" class="form-control" id="editAssistantPhone"></div>
+                <div class="col-md-4"><label for="editServantName" class="form-label">نام خدمتگزار</label><input type="text" class="form-control" id="editServantName"></div>
+                <div class="col-md-4"><label for="editServantPhone" class="form-label">شماره تماس خدمتگزار</label><input type="text" class="form-control" id="editServantPhone"></div>
+                <div class="col-md-4"><label for="editAccountNumber" class="form-label">شماره حساب مدرسه</label><input type="text" class="form-control" id="editAccountNumber"></div>
+                <div class="col-md-4"><label for="editArea" class="form-label">متراژ (متر مربع)</label><input type="number" class="form-control" id="editArea"></div>
+                <div class="col-md-4"><label for="editComputerCount" class="form-label">تعداد کامپیوتر</label><input type="number" class="form-control" id="editComputerCount"></div>
+                <div class="col-md-4"><label for="editDatashowCount" class="form-label">تعداد دیتاشو</label><input type="number" class="form-control" id="editDatashowCount"></div>
+                <div class="col-md-4"><label for="editCopierCount" class="form-label">تعداد دستگاه کپی</label><input type="number" class="form-control" id="editCopierCount"></div>
+                <div class="col-md-4"><label for="editPrinterCount" class="form-label">تعداد پرینتر</label><input type="number" class="form-control" id="editPrinterCount"></div>
+                <div class="col-md-4"><label for="editSmartboardCount" class="form-label">تعداد برد هوشمند</label><input type="number" class="form-control" id="editSmartboardCount"></div>
+                <div class="col-12"><label for="editSchoolAddress" class="form-label">آدرس مدرسه</label><textarea class="form-control" id="editSchoolAddress" rows="2"></textarea></div>
+                <div class="col-12"><label for="editSchoolDescription" class="form-label">توضیحات</label><textarea class="form-control" id="editSchoolDescription" rows="2"></textarea></div>
+                <div class="col-12 d-flex justify-content-end gap-2">
+                    <button type="submit" class="btn btn-success">ذخیره تغییرات</button>
+                    <button type="button" class="btn btn-secondary" onclick="cancelEditSchool()">انصراف</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="card shadow mt-4">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">لیست مدارس</h6>
+                <div>
+                    <button class="btn btn-success btn-sm" onclick="exportAllSchoolsToExcel()">
+                        <i class="fas fa-file-excel me-1"></i> <span class="d-none d-sm-inline">خروجی اکسل (همه)</span>
+                    </button>
+                    <button class="btn btn-primary btn-sm" onclick="showAddSchoolForm()">
+                        <i class="fas fa-plus me-1"></i> <span class="d-none d-sm-inline">افزودن مدرسه</span>
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>نام مدرسه</th>
+                                <th>نام مدیر</th>
+                                <th>تلفن مدرسه</th>
+                                <th>کد فضا</th>
+                                <th>تعداد کلاس</th>
+                                <th>تعداد دانش آموز</th>
+                                <th>عملیات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-schools-table-body">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="toast-container position-fixed bottom-0 start-0 p-3">
+    <div id="save-toast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body" id="toast-message">
+                تغییرات با موفقیت ذخیره شد!
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    // اطلاعات ورود مدیر
+    const ADMIN_CREDENTIALS = {
+        username: "admin",
+        password: "123"
+    };
+    
+    // اطلاعات مدارس
+    let schools = JSON.parse(localStorage.getItem('schools')) || [];
+    
+    // بارگذاری اولیه صفحه
+    document.addEventListener('DOMContentLoaded', function() {
+        renderSchoolsTable();
+        updateStats();
+    });
+    
+    // تابع محاسبه و نمایش آمار
+    function updateStats() {
+        const totalSchools = schools.length;
+        const totalStudents = schools.reduce((sum, school) => sum + (school.studentCount || 0), 0);
+        
+        document.getElementById('viewerTotalSchools').textContent = totalSchools;
+        document.getElementById('viewerTotalStudents').textContent = totalStudents.toLocaleString();
+        
+        document.getElementById('adminTotalSchools').textContent = totalSchools;
+        document.getElementById('adminTotalStudents').textContent = totalStudents.toLocaleString();
+    }
+    
+    // توابع تغییر صفحه
+    function showLoginForm() {
+        document.getElementById('username').value = '';
+        document.getElementById('password').value = '';
+        document.getElementById('viewerPage').style.display = 'none';
+        document.getElementById('adminLoginPage').style.display = 'flex';
+    }
+    
+    function backToViewer() {
+        document.getElementById('adminLoginPage').style.display = 'none';
+        document.getElementById('viewerPage').style.display = 'block';
+    }
+    
+    function logout() {
+        document.getElementById('adminPage').style.display = 'none';
+        document.getElementById('viewerPage').style.display = 'block';
+        renderSchoolsTable();
+        updateStats();
+    }
+    
+    // تابع ورود به سیستم
+    function login() {
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value;
+        
+        if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
+            document.getElementById('adminLoginPage').style.display = 'none';
+            document.getElementById('adminPage').style.display = 'block';
+            renderAdminTable();
+            updateStats();
+        } else {
+            alert('نام کاربری یا رمز عبور اشتباه است!');
+        }
+    }
+    
+    // تابع رندر جدول مدارس در صفحه مشاهده
+    function renderSchoolsTable() {
+        const tableBody = document.getElementById('schoolsListView');
+        if (!tableBody) return;
+        tableBody.innerHTML = '';
+        
+        if (schools.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">هیچ مدرسه‌ای ثبت نشده است</td></tr>';
+            return;
+        }
+        
+        schools.forEach((school, index) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${index + 1}</td>
+                <td>${school.name}</td>
+                <td>${school.principalName || 'ثبت نشده'}</td>
+                <td>${school.schoolPhone || 'ثبت نشده'}</td>
+                <td>${school.spaceCode || 'ثبت نشده'}</td>
+                <td>${school.classCount || 'ثبت نشده'}</td>
+                <td>${school.studentCount || 'ثبت نشده'}</td>
+                <td>
+                    <button class="btn btn-sm btn-primary" onclick="showSchoolDetails(${school.id})">
+                        <i class="fas fa-eye"></i> <span class="d-none d-sm-inline">مشاهده</span>
+                    </button>
+                </td>
+            `;
+            tableBody.appendChild(row);
+        });
+        
+        document.getElementById('viewerSearchInput').addEventListener('input', function(e) {
+            const searchText = e.target.value.toLowerCase();
+            const rows = tableBody.querySelectorAll('tr');
+            
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                let found = false;
+                cells.forEach(cell => {
+                    if (cell.textContent.toLowerCase().includes(searchText)) {
+                        found = true;
+                    }
+                });
+                row.style.display = found ? '' : 'none';
+            });
+        });
+    }
+    
+    // تابع نمایش جزئیات مدرسه
+    function showSchoolDetails(schoolId) {
+        const school = schools.find(s => s.id === schoolId);
+        if (!school) return;
+        
+        document.getElementById('schoolsList').style.display = 'none';
+        document.getElementById('schoolDetails').style.display = 'block';
+        
+        const detailsHeader = document.getElementById('schoolDetailsHeader');
+        detailsHeader.innerHTML = `
+            <h6 class="m-0 font-weight-bold text-primary">جزئیات مدرسه: ${school.name}</h6>
+            <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-success" onclick="exportSingleSchoolToExcel(${school.id})">
+                    <i class="fas fa-file-excel me-1"></i> <span class="d-none d-sm-inline">خروجی اکسل</span>
+                </button>
+                <button class="btn btn-sm btn-secondary" onclick="backToList()">بازگشت</button>
+            </div>
+        `;
+        
+        const detailsContent = document.getElementById('schoolDetailsContent');
+        detailsContent.innerHTML = `
+            <div class="col-md-4"><p><strong>نام مدرسه:</strong> ${school.name}</p></div>
+            <div class="col-md-4"><p><strong>کد فضا:</strong> ${school.spaceCode || 'ثبت نشده'}</p></div>
+            <div class="col-md-4"><p><strong>شناسه مدرسه:</strong> ${school.schoolId || 'ثبت نشده'}</p></div>
+            <div class="col-md-4"><p><strong>شماره حساب:</strong> ${school.accountNumber || 'ثبت نشده'}</p></div>
+            <div class="col-md-4"><p><strong>تعداد کلاس:</strong> ${school.classCount || 'ثبت نشده'}</p></div>
+            <div class="col-md-4"><p><strong>تعداد دانش آموز:</strong> ${school.studentCount || 'ثبت نشده'}</p></div>
+            <div class="col-md-4"><p><strong>نام مدیر:</strong> ${school.principalName || 'ثبت نشده'}</p></div>
+            <div class="col-md-4"><p><strong>تماس مدیر:</strong> ${school.principalPhone || 'ثبت نشده'}</p></div>
+            <div class="col-md-4"><p><strong>نام معاون:</strong> ${school.assistantName || 'ثبت نشده'}</p></div>
+            <div class="col-md-4"><p><strong>تماس معاون:</strong> ${school.assistantPhone || 'ثبت نشده'}</p></div>
+            <div class="col-md-4"><p><strong>نام خدمتگزار:</strong> ${school.servantName || 'ثبت نشده'}</p></div>
+            <div class="col-md-4"><p><strong>تماس خدمتگزار:</strong> ${school.servantPhone || 'ثبت نشده'}</p></div>
+            <div class="col-md-3"><p><strong>تعداد کامپیوتر:</strong> ${school.computerCount || '0'}</p></div>
+            <div class="col-md-3"><p><strong>تعداد دیتاشو:</strong> ${school.datashowCount || '0'}</p></div>
+            <div class="col-md-3"><p><strong>تعداد دستگاه کپی:</strong> ${school.copierCount || '0'}</p></div>
+            <div class="col-md-3"><p><strong>تعداد پرینتر:</strong> ${school.printerCount || '0'}</p></div>
+            <div class="col-md-4"><p><strong>تعداد برد هوشمند:</strong> ${school.smartboardCount || '0'}</p></div>
+            <div class="col-md-4"><p><strong>متراژ:</strong> ${school.area ? school.area + ' متر مربع' : 'ثبت نشده'}</p></div>
+            <div class="col-12"><p><strong>آدرس:</strong> ${school.schoolAddress || 'ثبت نشده'}</p></div>
+            <div class="col-12"><p><strong>توضیحات:</strong> ${school.schoolDescription || 'ثبت نشده'}</p></div>
+        `;
+    }
+    
+    // تابع بازگشت به لیست
+    function backToList() {
+        document.getElementById('schoolDetails').style.display = 'none';
+        document.getElementById('schoolsList').style.display = 'block';
+    }
+    
+    // تابع رندر جدول مدیریت
+    function renderAdminTable() {
+        const tableBody = document.getElementById('admin-schools-table-body');
+        tableBody.innerHTML = '';
+        
+        if (schools.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">هیچ مدرسه‌ای ثبت نشده است</td></tr>';
+            return;
+        }
+        
+        schools.forEach((school, index) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${index + 1}</td>
+                <td>${school.name}</td>
+                <td>${school.principalName || 'ثبت نشده'}</td>
+                <td>${school.schoolPhone || 'ثبت نشده'}</td>
+                <td>${school.spaceCode || 'ثبت نشده'}</td>
+                <td>${school.classCount || 'ثبت نشده'}</td>
+                <td>${school.studentCount || 'ثبت نشده'}</td>
+                <td class="d-flex gap-1">
+                    <button class="btn btn-sm btn-warning" onclick="editSchool(${school.id})">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteSchool(${school.id})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            `;
+            tableBody.appendChild(row);
+        });
+    }
+    
+    // تابع نمایش فرم افزودن مدرسه
+    function showAddSchoolForm() {
+        document.getElementById('editSchoolForm').style.display = 'none';
+        document.getElementById('addSchoolForm').style.display = 'block';
+    }
+    
+    // تابع لغو افزودن مدرسه
+    function cancelAddSchool() {
+        document.getElementById('addSchoolForm').style.display = 'none';
+        document.getElementById('newSchoolForm').reset();
+    }
+    
+    // تابع ویرایش مدرسه
+    function editSchool(schoolId) {
+        document.getElementById('addSchoolForm').style.display = 'none';
+        
+        const school = schools.find(s => s.id === schoolId);
+        if (!school) return;
+        
+        document.getElementById('editSchoolId').value = school.id;
+        document.getElementById('editSchoolName').value = school.name;
+        document.getElementById('editPrincipalName').value = school.principalName || '';
+        document.getElementById('editSchoolPhone').value = school.schoolPhone || '';
+        document.getElementById('editSpaceCode').value = school.spaceCode || '';
+        document.getElementById('editClassCount').value = school.classCount || '';
+        document.getElementById('editStudentCount').value = school.studentCount || '';
+        document.getElementById('editDatashowCount').value = school.datashowCount || '';
+        document.getElementById('editArea').value = school.area || '';
+        document.getElementById('editServantName').value = school.servantName || '';
+        document.getElementById('editServantPhone').value = school.servantPhone || '';
+        document.getElementById('editSchoolIdField').value = school.schoolId || '';
+        document.getElementById('editPrincipalPhone').value = school.principalPhone || '';
+        document.getElementById('editAssistantName').value = school.assistantName || '';
+        document.getElementById('editAssistantPhone').value = school.assistantPhone || '';
+        document.getElementById('editComputerCount').value = school.computerCount || '';
+        document.getElementById('editCopierCount').value = school.copierCount || '';
+        document.getElementById('editPrinterCount').value = school.printerCount || '';
+        document.getElementById('editSmartboardCount').value = school.smartboardCount || '';
+        document.getElementById('editAccountNumber').value = school.accountNumber || '';
+        document.getElementById('editSchoolAddress').value = school.schoolAddress || '';
+        document.getElementById('editSchoolDescription').value = school.schoolDescription || '';
+        
+        document.getElementById('editSchoolForm').style.display = 'block';
+        window.scrollTo(0, document.getElementById('editSchoolForm').offsetTop);
+    }
+    
+    // تابع لغو ویرایش مدرسه
+    function cancelEditSchool() {
+        document.getElementById('editSchoolForm').style.display = 'none';
+        document.getElementById('editSchoolDataForm').reset();
+    }
+    
+    // تابع حذف مدرسه
+    function deleteSchool(schoolId) {
+        if (confirm('آیا از حذف این مدرسه اطمینان دارید؟')) {
+            schools = schools.filter(school => school.id !== schoolId);
+            localStorage.setItem('schools', JSON.stringify(schools));
+            renderAdminTable();
+            updateStats();
+            showToast('مدرسه با موفقیت حذف شد');
+        }
+    }
+    
+    // مدیریت فرم افزودن مدرسه جدید
+    document.getElementById('newSchoolForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const requiredFields = {
+            name: document.getElementById('schoolName').value,
+            principalName: document.getElementById('principalName').value,
+            schoolPhone: document.getElementById('schoolPhone').value,
+            spaceCode: document.getElementById('spaceCode').value,
+            classCount: document.getElementById('classCount').value,
+            studentCount: document.getElementById('studentCount').value
+        };
+
+        for (const field in requiredFields) {
+            if (!requiredFields[field]) {
+                alert('لطفا تمامی فیلدهای ستاره‌دار را پر کنید.');
+                return;
+            }
+        }
+
+        const newSchool = {
+            id: Date.now(),
+            ...requiredFields,
+            datashowCount: document.getElementById('datashowCount').value ? parseInt(document.getElementById('datashowCount').value) : null,
+            area: document.getElementById('area').value ? parseInt(document.getElementById('area').value) : null,
+            servantName: document.getElementById('servantName').value,
+            servantPhone: document.getElementById('servantPhone').value,
+            schoolId: document.getElementById('schoolId').value,
+            principalPhone: document.getElementById('principalPhone').value,
+            assistantName: document.getElementById('assistantName').value,
+            assistantPhone: document.getElementById('assistantPhone').value,
+            computerCount: document.getElementById('computerCount').value ? parseInt(document.getElementById('computerCount').value) : null,
+            copierCount: document.getElementById('copierCount').value ? parseInt(document.getElementById('copierCount').value) : null,
+            printerCount: document.getElementById('printerCount').value ? parseInt(document.getElementById('printerCount').value) : null,
+            smartboardCount: document.getElementById('smartboardCount').value ? parseInt(document.getElementById('smartboardCount').value) : null,
+            accountNumber: document.getElementById('accountNumber').value,
+            schoolAddress: document.getElementById('schoolAddress').value,
+            schoolDescription: document.getElementById('schoolDescription').value
+        };
+        newSchool.classCount = parseInt(newSchool.classCount);
+        newSchool.studentCount = parseInt(newSchool.studentCount);
+        
+        schools.push(newSchool);
+        localStorage.setItem('schools', JSON.stringify(schools));
+        
+        document.getElementById('newSchoolForm').reset();
+        document.getElementById('addSchoolForm').style.display = 'none';
+        
+        renderAdminTable();
+        updateStats();
+        showToast('مدرسه جدید با موفقیت افزوده شد');
+    });
+    
+    // مدیریت فرم ویرایش مدرسه
+    document.getElementById('editSchoolDataForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const requiredFields = {
+            name: document.getElementById('editSchoolName').value,
+            principalName: document.getElementById('editPrincipalName').value,
+            schoolPhone: document.getElementById('editSchoolPhone').value,
+            spaceCode: document.getElementById('editSpaceCode').value,
+            classCount: document.getElementById('editClassCount').value,
+            studentCount: document.getElementById('editStudentCount').value
+        };
+
+        for (const field in requiredFields) {
+            if (!requiredFields[field]) {
+                alert('لطفا تمامی فیلدهای ستاره‌دار را پر کنید.');
+                return;
+            }
+        }
+        
+        const schoolId = parseInt(document.getElementById('editSchoolId').value);
+        const schoolIndex = schools.findIndex(s => s.id === schoolId);
+        
+        if (schoolIndex === -1) {
+            showToast('مدرسه مورد نظر یافت نشد');
+            return;
+        }
+        
+        schools[schoolIndex] = {
+            id: schoolId,
+            ...requiredFields,
+            datashowCount: document.getElementById('editDatashowCount').value ? parseInt(document.getElementById('editDatashowCount').value) : null,
+            area: document.getElementById('editArea').value ? parseInt(document.getElementById('editArea').value) : null,
+            servantName: document.getElementById('editServantName').value,
+            servantPhone: document.getElementById('editServantPhone').value,
+            schoolId: document.getElementById('editSchoolIdField').value,
+            principalPhone: document.getElementById('editPrincipalPhone').value,
+            assistantName: document.getElementById('editAssistantName').value,
+            assistantPhone: document.getElementById('editAssistantPhone').value,
+            computerCount: document.getElementById('editComputerCount').value ? parseInt(document.getElementById('editComputerCount').value) : null,
+            copierCount: document.getElementById('editCopierCount').value ? parseInt(document.getElementById('editCopierCount').value) : null,
+            printerCount: document.getElementById('editPrinterCount').value ? parseInt(document.getElementById('editPrinterCount').value) : null,
+            smartboardCount: document.getElementById('editSmartboardCount').value ? parseInt(document.getElementById('editSmartboardCount').value) : null,
+            accountNumber: document.getElementById('editAccountNumber').value,
+            schoolAddress: document.getElementById('editSchoolAddress').value,
+            schoolDescription: document.getElementById('editSchoolDescription').value
+        };
+        schools[schoolIndex].classCount = parseInt(schools[schoolIndex].classCount);
+        schools[schoolIndex].studentCount = parseInt(schools[schoolIndex].studentCount);
+
+        localStorage.setItem('schools', JSON.stringify(schools));
+        
+        document.getElementById('editSchoolForm').style.display = 'none';
+        document.getElementById('editSchoolDataForm').reset();
+        
+        renderAdminTable();
+        updateStats();
+        showToast('اطلاعات مدرسه با موفقیت ویرایش شد');
+    });
+    
+    // تابع نمایش اعلان
+    function showToast(message) {
+        const toastEl = document.getElementById('save-toast');
+        const toastBody = document.getElementById('toast-message');
+        if (toastBody) toastBody.textContent = message;
+        const toast = new bootstrap.Toast(toastEl);
+        toast.show();
+    }
+
+    // ========== توابع مربوط به خروجی اکسل ==========
+
+    function exportAllSchoolsToExcel() {
+        if (schools.length === 0) {
+            alert('هیچ مدرسه‌ای برای خروجی گرفتن وجود ندارد.');
+            return;
+        }
+
+        const headers = [
+            'نام مدرسه', 'کد فضا', 'شناسه مدرسه', 'نام مدیر', 'شماره تماس مدیر', 'تلفن مدرسه',
+            'نام معاون', 'شماره تماس معاون', 'نام خدمتگزار', 'شماره تماس خدمتگزار', 'شماره حساب مدرسه',
+            'متراژ (متر مربع)', 'تعداد کلاس', 'تعداد دانش آموز', 'تعداد کامپیوتر', 'تعداد دیتاشو',
+            'تعداد دستگاه کپی', 'تعداد پرینتر', 'تعداد برد هوشمند', 'آدرس مدرسه', 'توضیحات'
+        ];
+
+        const data = schools.map(school => [
+            school.name || '', school.spaceCode || '', school.schoolId || '',
+            school.principalName || '', school.principalPhone || '', school.schoolPhone || '',
+            school.assistantName || '', school.assistantPhone || '',
+            school.servantName || '', school.servantPhone || '', school.accountNumber || '',
+            school.area || '', school.classCount || 0, school.studentCount || 0,
+            school.computerCount || 0, school.datashowCount || 0, school.copierCount || 0,
+            school.printerCount || 0, school.smartboardCount || 0,
+            school.schoolAddress || '', school.schoolDescription || ''
+        ]);
+
+        const exportData = [headers, ...data];
+        const ws = XLSX.utils.aoa_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'لیست مدارس');
+        
+        if(!ws['!view']) ws['!view'] = {};
+        ws['!view'].RTL = true;
+
+        XLSX.writeFile(wb, 'لیست_کامل_مدارس.xlsx');
+    }
+
+    function exportSingleSchoolToExcel(schoolId) {
+        const school = schools.find(s => s.id === schoolId);
+        if (!school) {
+            alert('مدرسه مورد نظر یافت نشد.');
+            return;
+        }
+
+        const data = [
+            ['فیلد', 'مقدار'],
+            ['نام مدرسه', school.name || ''],
+            ['کد فضا', school.spaceCode || ''],
+            ['شناسه مدرسه', school.schoolId || ''],
+            ['نام مدیر', school.principalName || ''],
+            ['شماره تماس مدیر', school.principalPhone || ''],
+            ['تلفن مدرسه', school.schoolPhone || ''],
+            ['نام معاون', school.assistantName || ''],
+            ['شماره تماس معاون', school.assistantPhone || ''],
+            ['نام خدمتگزار', school.servantName || ''],
+            ['شماره تماس خدمتگزار', school.servantPhone || ''],
+            ['شماره حساب مدرسه', school.accountNumber || ''],
+            ['متراژ (متر مربع)', school.area || ''],
+            ['تعداد کلاس', school.classCount || 0],
+            ['تعداد دانش آموز', school.studentCount || 0],
+            ['تعداد کامپیوتر', school.computerCount || 0],
+            ['تعداد دیتاشو', school.datashowCount || 0],
+            ['تعداد دستگاه کپی', school.copierCount || 0],
+            ['تعداد پرینتر', school.printerCount || 0],
+            ['تعداد برد هوشمند', school.smartboardCount || 0],
+            ['آدرس مدرسه', school.schoolAddress || ''],
+            ['توضیحات', school.schoolDescription || '']
+        ];
+        
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'جزئیات مدرسه');
+        
+        if(!ws['!view']) ws['!view'] = {};
+        ws['!view'].RTL = true;
+
+        XLSX.writeFile(wb, `اطلاعات_مدرسه_${school.name}.xlsx`);
+    }
+
+</script>
+
+</body>
+</html>
